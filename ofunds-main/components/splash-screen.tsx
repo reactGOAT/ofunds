@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 const SPLASH_DURATION = 4000; // 4 seconds
 const FADE_DURATION = 300;
@@ -40,8 +41,15 @@ export default function SplashScreen() {
       style={{ transitionDuration: `${FADE_DURATION}ms` }}
     >
       <div className="flex flex-col items-center gap-4">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white">
-          <span className="text-4xl font-bold text-[#ff6b00]">O</span>
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white p-2">
+          <Image
+            src="/ofunds-icon.png"
+            alt="Ofunds"
+            width={80}
+            height={80}
+            priority
+            className="object-contain"
+          />
         </div>
         <p className="text-lg font-medium text-white">Loading...</p>
       </div>

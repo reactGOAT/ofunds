@@ -10,8 +10,8 @@ export function PushNotificationBanner() {
   const {
     permission,
     isSupported,
-    isSubscribed,
-    isLoading,
+    isEnabled,
+    isSubscribing,
     subscribe,
   } = usePushNotifications();
 

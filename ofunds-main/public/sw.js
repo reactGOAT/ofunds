@@ -121,8 +121,8 @@ self.addEventListener('push', (event) => {
   let data = {
     title: 'Ofunds',
     body: 'New notification from Ofunds',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-96x96.png',
+    icon: '/ofunds-icon.png',
+    badge: '/ofunds-icon.png',
     tag: 'ofunds-notification',
     data: {
       url: '/notifications',
@@ -150,8 +150,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || '/icons/icon-192x192.png',
-    badge: data.badge || '/icons/icon-96x96.png',
+    icon: data.icon || '/ofunds-icon.png',
+    badge: data.badge || '/ofunds-icon.png',
     tag: data.tag || 'ofunds-notification',
     vibrate: [100, 50, 100],
     requireInteraction: true,
@@ -161,12 +161,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'open',
         title: 'View',
-        icon: '/icons/icon-96x96.png'
+        icon: '/ofunds-icon.png'
       },
       {
         action: 'dismiss',
         title: 'Dismiss',
-        icon: '/icons/icon-96x96.png'
+        icon: '/ofunds-icon.png'
       }
     ]
   };

@@ -169,8 +169,8 @@ export function usePushNotifications() {
       try {
         const registration = await navigator.serviceWorker.ready;
         await registration.showNotification(title, {
-          icon: "/icons/icon-192x192.png",
-          badge: "/icons/icon-96x96.png",
+          icon: "/ofunds-icon.png",
+          badge: "/ofunds-icon.png",
           vibrate: [100, 50, 100],
           tag: "local-notification",
           ...options,

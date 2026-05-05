@@ -15,25 +15,25 @@
   "categories": ["finance", "business", "productivity"],
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "/ofunds-icon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/ofunds-icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "/ofunds-icon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/ofunds-icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -47,7 +47,7 @@
       "url": "/cards",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
+          "src": "/ofunds-icon.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -60,7 +60,7 @@
       "url": "/cards?tab=send",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
+          "src": "/ofunds-icon.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -73,7 +73,7 @@
       "url": "/history",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
+          "src": "/ofunds-icon.png",
           "sizes": "192x192",
           "type": "image/png"
         }

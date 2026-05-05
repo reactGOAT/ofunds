@@ -220,8 +220,8 @@ function PushNotificationSettings() {
   const {
     permission,
     isSupported,
-    isSubscribed,
-    isLoading,
+    isEnabled,
+    isSubscribing,
     subscribe,
     unsubscribe,
   } = usePushNotifications();
@@ -237,7 +237,7 @@ function PushNotificationSettings() {
   }
 
   const handleToggle = async () => {
-    if (isSubscribed) {
+    if (isEnabled) {
       await unsubscribe();
     } else {
       await subscribe();
@@ -249,16 +249,16 @@ function PushNotificationSettings() {
       <div className="flex items-center gap-3">
         <div className={cn(
           "w-10 h-10 rounded-full flex items-center justify-center",
-          isSubscribed ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+          isEnabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
         )}>
-          {isSubscribed ? <BellRing className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
+          {isEnabled ? <BellRing className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
         </div>
         <div>
           <h3 className="font-semibold text-sm text-foreground">Push Notifications</h3>
           <p className="text-xs text-muted-foreground">
             {permission === "denied" 
               ? "Blocked in browser settings" 
-              : isSubscribed 
+              : isEnabled 
                 ? "Enabled" 
                 : "Disabled"}
           </p>
@@ -267,15 +267,15 @@ function PushNotificationSettings() {
       
       <Button
         size="sm"
-        variant={isSubscribed ? "outline" : "default"}
+        variant={isEnabled ? "outline" : "default"}
         onClick={handleToggle}
-        disabled={isLoading || permission === "denied"}
+        disabled={isSubscribing || permission === "denied"}
         className={cn(
           "text-xs",
-          !isSubscribed && "bg-primary hover:bg-primary/90"
+          !isEnabled && "bg-primary hover:bg-primary/90"
         )}
       >
-        {isLoading ? "..." : isSubscribed ? "Disable" : "Enable"}
+        {isSubscribing ? "..." : isEnabled ? "Disable" : "Enable"}
       </Button>
     </div>
   );
