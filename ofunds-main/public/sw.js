@@ -1,9 +1,10 @@
-const CACHE_NAME = 'ofunds-v1';
+const CACHE_NAME = 'ofunds-v2';
 const urlsToCache = [
   '/',
   '/dashboard',
   '/cards',
   '/history',
+  '/notifications',
   '/login',
   '/manifest.json',
   // Add other critical assets
@@ -115,50 +116,95 @@ async function doBackgroundSync() {
   console.log('Background sync triggered');
 }
 
-// Push notifications
+// Push notifications with enhanced handling
 self.addEventListener('push', (event) => {
-  const options = {
-    body: event.data ? event.data.text() : 'New notification from Ofunds',
+  let data = {
+    title: 'Ofunds',
+    body: 'New notification from Ofunds',
     icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
-    vibrate: [100, 50, 100],
+    badge: '/icons/icon-96x96.png',
+    tag: 'ofunds-notification',
     data: {
+      url: '/notifications',
       dateOfArrival: Date.now(),
-      primaryKey: 1
-    },
+    }
+  };
+
+  // Try to parse push data
+  if (event.data) {
+    try {
+      const pushData = event.data.json();
+      data = {
+        ...data,
+        ...pushData,
+        data: {
+          ...data.data,
+          ...(pushData.data || {}),
+        }
+      };
+    } catch (e) {
+      // If not JSON, use text as body
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || '/icons/icon-192x192.png',
+    badge: data.badge || '/icons/icon-96x96.png',
+    tag: data.tag || 'ofunds-notification',
+    vibrate: [100, 50, 100],
+    requireInteraction: true,
+    renotify: true,
+    data: data.data,
     actions: [
       {
-        action: 'explore',
-        title: 'Explore',
+        action: 'open',
+        title: 'View',
         icon: '/icons/icon-96x96.png'
       },
       {
-        action: 'close',
-        title: 'Close',
+        action: 'dismiss',
+        title: 'Dismiss',
         icon: '/icons/icon-96x96.png'
       }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification('Ofunds', options)
+    self.registration.showNotification(data.title, options)
   );
 });
 
-// Notification click handling
+// Notification click handling with improved navigation
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  if (event.action === 'explore') {
+  const urlToOpen = event.notification.data?.url || '/dashboard';
+
+  if (event.action === 'open' || !event.action) {
     event.waitUntil(
-      clients.openWindow('/dashboard')
-    );
-  } else if (event.action === 'close') {
-    // Just close the notification
-  } else {
-    // Default action - open the app
-    event.waitUntil(
-      clients.openWindow('/')
+      clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then((windowClients) => {
+          // Check if there's already a window open
+          for (const client of windowClients) {
+            if (client.url.includes(self.location.origin) && 'focus' in client) {
+              client.focus();
+              client.navigate(urlToOpen);
+              return;
+            }
+          }
+          // If no window is open, open a new one
+          if (clients.openWindow) {
+            return clients.openWindow(urlToOpen);
+          }
+        })
     );
   }
+  // 'dismiss' action just closes the notification (already done above)
+});
+
+// Handle notification close
+self.addEventListener('notificationclose', (event) => {
+  console.log('Notification closed:', event.notification.tag);
 });

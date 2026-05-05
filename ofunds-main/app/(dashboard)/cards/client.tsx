@@ -1,8 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { CreditCard, Calendar, Building2 } from "lucide-react";
+import { RequestCardDialog } from "@/components/dialogs/request-card-dialog";
+import { useGetAtmCardCharge } from "@/hooks/useCards";
 
 export default function CardsClient() {
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const { data: cardCharge } = useGetAtmCardCharge();
+
+  const formatAmount = (amount: string | number | undefined) => {
+    if (!amount) return "0";
+    const num = typeof amount === "string" ? parseFloat(amount) : amount;
+    return num.toLocaleString("en-NG");
+  };
+
   return (
     <>
       {/* Add CSS styles for enhanced 3D card animation */}
@@ -187,7 +199,7 @@ export default function CardsClient() {
             <div className="flex flex-col gap-1 justify-center">
               <h3 className="font-bold text-lg text-foreground">Issuing Fee</h3>
               <p className="text-base text-muted-foreground">
-                ₦0 shipping fee included
+                N{formatAmount(cardCharge)} shipping fee included
               </p>
             </div>
           </div>
@@ -228,12 +240,21 @@ export default function CardsClient() {
 
           {/* Action Button */}
           <div className="pt-8 w-full">
-            <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg py-5 rounded-[20px] shadow-[0_10px_15px_-3px_rgba(255,106,0,0.3)] transition-all active:scale-[0.98]">
+            <button 
+              onClick={() => setRequestDialogOpen(true)}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg py-5 rounded-[20px] shadow-[0_10px_15px_-3px_rgba(255,106,0,0.3)] transition-all active:scale-[0.98]"
+            >
               Get Card
             </button>
           </div>
         </div>
       </div>
+
+      {/* Request Card Dialog */}
+      <RequestCardDialog
+        open={requestDialogOpen}
+        onOpenChange={setRequestDialogOpen}
+      />
     </div>
       </>
   );
