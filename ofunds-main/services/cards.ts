@@ -24,6 +24,52 @@ export interface CardResponse {
   message: string;
 }
 
+// ATM Card Request types
+export interface AtmCardRequest {
+  id: number;
+  user_id: number;
+  transaction_id: number;
+  phone: string;
+  state: string;
+  lga: string;
+  street: string;
+  email: string;
+  status: "processing" | "delivered";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AtmCardRequestPayload {
+  phone: string;
+  state: string;
+  lga: string;
+  street: string;
+}
+
+export interface AtmCardRequestResponse {
+  status: boolean;
+  data: {
+    message: string;
+    data: AtmCardRequest;
+  };
+}
+
+export interface AtmCardChargeResponse {
+  status: boolean;
+  data: {
+    message: string;
+    data: string; // Card charge amount as string
+  };
+}
+
+export interface AtmCardRequestsResponse {
+  status: boolean;
+  data: {
+    message: string;
+    data: AtmCardRequest[];
+  };
+}
+
 export class CardService {
   static async requestCard(
     card_type: "sudo" | "ofunds",
@@ -109,6 +155,23 @@ export class CardService {
     message: string;
   }> {
     const response = await axiosInstance.post("/ofunds/card/request", {});
+    return response.data;
+  }
+
+  // ATM Card endpoints
+  static async requestAtmCard(payload: AtmCardRequestPayload): Promise<AtmCardRequestResponse> {
+    const response = await axiosInstance.post("/card/request", payload);
+    return response.data;
+  }
+
+  static async getAtmCardCharge(): Promise<AtmCardChargeResponse> {
+    const response = await axiosInstance.get("/card/charge");
+    return response.data;
+  }
+
+  static async getAtmCardRequests(status?: "processing" | "delivered"): Promise<AtmCardRequestsResponse> {
+    const url = status ? `/card/requests?status=${status}` : "/card/requests";
+    const response = await axiosInstance.get(url);
     return response.data;
   }
 }

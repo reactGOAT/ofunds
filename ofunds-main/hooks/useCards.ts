@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CardService } from "@/services/cards";
+import { CardService, type AtmCardRequestPayload } from "@/services/cards";
 import { useJetsendUserStore } from "@/store/jetsend-user-store";
 import { QueryKeys } from "@/models/query";
 
@@ -136,6 +136,40 @@ export const useRequestOfundsCard = () => {
       if (response.status) {
         addCard(response.data);
       }
+    },
+  });
+};
+
+// ATM Card Hooks
+export const useGetAtmCardCharge = () => {
+  return useQuery({
+    queryKey: ["atm-card-charge"],
+    queryFn: async () => {
+      const response = await CardService.getAtmCardCharge();
+      return response.data?.data || "0";
+    },
+    staleTime: 60 * 60 * 1000, // 1 hour
+    retry: 1,
+  });
+};
+
+export const useGetAtmCardRequests = (status?: "processing" | "delivered") => {
+  return useQuery({
+    queryKey: ["atm-card-requests", status],
+    queryFn: async () => {
+      const response = await CardService.getAtmCardRequests(status);
+      return response.data?.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+};
+
+export const useRequestAtmCard = () => {
+  return useMutation({
+    mutationFn: async (payload: AtmCardRequestPayload) => {
+      const response = await CardService.requestAtmCard(payload);
+      return response;
     },
   });
 };

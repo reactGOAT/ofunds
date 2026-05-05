@@ -128,10 +128,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${plusJakartaSans.className} h-full antialiased`}
+      className={`${plusJakartaSans.className} antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+      <body className="min-h-dvh flex flex-col overflow-x-hidden" suppressHydrationWarning>
         <ProvidersClient >
           <SplashScreen />
           <NetworkStatus />
