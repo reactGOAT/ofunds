@@ -1,0 +1,424 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldError,
+} from "@/components/ui/field";
+import { Loader2, AlertCircle, Lock, FileText } from "lucide-react";
+import { useGetUserBanks, useGetAllBanks, useVerifyBankAccount } from "@/hooks/useBanks";
+import { Bank, UserBank, WithdrawalBank } from "@/services/banks";
+import {
+  useInitTransfer,
+  useProcessTransfer,
+  useVerifyTransfer,
+} from "@/hooks/useTransactions";
+import { useSendAgain } from "@/hooks/useSendAgain";
+import { useJetsendUserStore } from "@/store/jetsend-user-store";
+import {
+  bankTransferInitSchema,
+  transactionProcessSchema,
+  transactionVerifySchema,
+  type BankTransferInitData,
+  type TransactionProcessData,
+  type TransactionVerifyData,
+} from "@/schema/transaction";
+import { Button } from "@/components/ui/button";
+
+interface BankTransferDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+  directBankData?: {
+    bank_code: string;
+    account_number: string;
+    account_name: string;
+  };
+  preSelectedBankId?: number;
+}
+
+type Step = "amount" | "pin" | "otp";
+type TransferMode = "saved" | "direct";
+
+export function BankTransferDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+  directBankData,
+  preSelectedBankId,
+}: BankTransferDialogProps) {
+  const [step, setStep] = useState<Step>("amount");
+  const [error, setError] = useState<string | null>(null);
+  const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
+  const [transferAmount, setTransferAmount] = useState<string>("");
+  const [transferMode, setTransferMode] = useState<TransferMode>("saved");
+  
+  const { data: userBanksData, isLoading: userBanksLoading } = useGetUserBanks();
+  
+  const userBanks: UserBank[] = userBanksData?.data?.data || [];
+  
+  const banksLoading = userBanksLoading;
+  const { mutate: initTransfer, isPending: initLoading } = useInitTransfer();
+  const { mutate: processTransfer, isPending: processLoading } =
+    useProcessTransfer();
+  const { mutate: verifyTransfer, isPending: verifyLoading } =
+    useVerifyTransfer();
+  const { addTransferRecipient } = useSendAgain();
+  const { balance } = useJetsendUserStore();
+
+  const amountForm = useForm<BankTransferInitData>({
+    resolver: zodResolver(bankTransferInitSchema),
+    defaultValues: { 
+      bank_id: 0, 
+      amount: "", 
+      note: undefined 
+    },
+  });
+
+  // Update form when pre-selected bank changes
+  useEffect(() => {
+    if (preSelectedBankId) {
+      amountForm.setValue("bank_id", preSelectedBankId);
+      setTransferMode("saved");
+    }
+  }, [preSelectedBankId, amountForm]);
+
+  const pinForm = useForm<TransactionProcessData>({
+    resolver: zodResolver(transactionProcessSchema),
+    defaultValues: { hash: "", pin: "" },
+  });
+
+  const otpForm = useForm<TransactionVerifyData>({
+    resolver: zodResolver(transactionVerifySchema),
+    defaultValues: { hash: "", otp_code: "" },
+  });
+
+  const handleAmountSubmit = amountForm.handleSubmit((data) => {
+    setError(null);
+    setSelectedBankId(data.bank_id);
+    setTransferAmount(data.amount);
+
+    const transferData = {
+      bank_id: data.bank_id,
+      amount: data.amount,
+      note: data.note || "",
+    };
+
+    initTransfer(transferData, {
+      onSuccess: (response) => {
+        setTransactionHash(response.hash);
+        setStep("pin");
+      },
+      onError: (err) => {
+        setError(
+          err instanceof Error ? err.message : "Failed to initiate transfer",
+        );
+      },
+    });
+  });
+
+  const handlePinSubmit = pinForm.handleSubmit((data) => {
+    if (!transactionHash) return;
+    setError(null);
+
+    processTransfer(
+      { ...data, hash: transactionHash },
+      {
+        onSuccess: () => {
+          setStep("otp");
+        },
+        onError: (err) => {
+          setError(
+            err instanceof Error ? err.message : "Failed to process transfer",
+          );
+        },
+      },
+    );
+  });
+
+  const handleOtpSubmit = otpForm.handleSubmit((data) => {
+    if (!transactionHash || !selectedBankId) return;
+    setError(null);
+
+    verifyTransfer(
+      { ...data, hash: transactionHash },
+      {
+        onSuccess: () => {
+          if (transferMode === "saved") {
+            const selectedBank = userBanks.find((b) => b.id === selectedBankId);
+            if (selectedBank) {
+              addTransferRecipient({
+                name: selectedBank.bank_name,
+                amount: parseFloat(transferAmount),
+                bankId: selectedBank.id.toString(),
+                accountNumber: selectedBank.account_number,
+                accountName: selectedBank.account_name,
+                bankName: selectedBank.bank_name,
+              });
+            }
+          }
+          onOpenChange(false);
+          onSuccess?.();
+          resetForm();
+        },
+        onError: (err) => {
+          setError(
+            err instanceof Error ? err.message : "Failed to verify transfer",
+          );
+        },
+      },
+    );
+  });
+
+  const resetForm = () => {
+    setStep("amount");
+    setTransactionHash(null);
+    setSelectedBankId(null);
+    setTransferAmount("");
+    amountForm.reset();
+    pinForm.reset();
+    otpForm.reset();
+  };
+
+  const handleClose = () => {
+    onOpenChange(false);
+    resetForm();
+  };
+
+  
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">
+            Transfer to Bank
+          </DialogTitle>
+          <DialogDescription>
+            {step === "amount" && "Select a bank account and enter the amount"}
+            {step === "pin" && "Enter your 6-digit PIN to confirm"}
+            {step === "otp" && "Enter the OTP code sent to your email"}
+          </DialogDescription>
+        </DialogHeader>
+
+        {error && (
+          <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 flex gap-2">
+            <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        {/* Step 1: Amount Selection */}
+        {step === "amount" && (
+          <form onSubmit={handleAmountSubmit} className="space-y-5">
+            
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="bank_id" className="font-bold text-xs">
+                  Select Saved Bank
+                </FieldLabel>
+                <Select
+                  value={amountForm.watch("bank_id")?.toString() || ""}
+                  onValueChange={(value) => {
+                    amountForm.setValue("bank_id", value ? parseInt(value, 10) : 0);
+                  }}
+                >
+                  <SelectTrigger className="h-12 px-4 rounded-xl bg-muted/30 border-transparent focus-visible:border-primary focus-visible:ring-primary/20 text-foreground text-sm">
+                    <SelectValue placeholder="Choose a saved bank..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userBanks.map((bank) => (
+                      <SelectItem key={bank.id} value={bank.id.toString()}>
+                        {bank.bank_name} - {bank.account_number}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {amountForm.formState.errors.bank_id && (
+                  <FieldError>
+                    {amountForm.formState.errors.bank_id.message}
+                  </FieldError>
+                )}
+              </Field>
+            </FieldGroup>
+
+            <Field>
+                <FieldLabel htmlFor="amount" className="font-bold text-xs">
+                  Amount
+                </FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none font-bold">₦</span>
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="pl-11 h-12 bg-muted/30 border-transparent focus-visible:border-primary focus-visible:ring-primary/20 rounded-xl"
+                    {...amountForm.register("amount")}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Available: ₦{balance?.toLocaleString()}
+                </p>
+                {amountForm.formState.errors.amount && (
+                  <FieldError>
+                    {amountForm.formState.errors.amount.message}
+                  </FieldError>
+                )}
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="note" className="font-bold text-xs">
+                  Note (Optional)
+                </FieldLabel>
+                <div className="relative">
+                  <FileText className="absolute left-4 top-4 text-muted-foreground w-5 h-5 pointer-events-none" />
+                  <textarea
+                    id="note"
+                    placeholder="Add a note..."
+                    rows={2}
+                    className="pl-11 p-3 rounded-xl bg-muted/30 border-transparent focus-visible:border-primary focus-visible:ring-primary/20 text-sm resize-none w-full"
+                    {...amountForm.register("note")}
+                  />
+                </div>
+              </Field>
+            </FieldGroup>
+
+            <Button
+              type="submit"
+              disabled={initLoading || banksLoading}
+              className="w-full h-11 rounded-xl font-bold"
+            >
+              {initLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Continue to PIN
+            </Button>
+          </form>
+        )}
+
+        {/* Step 2: PIN Verification */}
+        {step === "pin" && (
+          <form onSubmit={handlePinSubmit} className="space-y-5">
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="pin" className="font-bold text-xs">
+                  6-Digit PIN
+                </FieldLabel>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5 pointer-events-none" />
+                  <Input
+                    id="pin"
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="••••••"
+                    className="pl-11 h-12 bg-muted/30 border-transparent focus-visible:border-primary focus-visible:ring-primary/20 rounded-xl tracking-widest text-center"
+                    {...pinForm.register("pin")}
+                  />
+                </div>
+                {pinForm.formState.errors.pin && (
+                  <FieldError>
+                    {pinForm.formState.errors.pin.message}
+                  </FieldError>
+                )}
+              </Field>
+            </FieldGroup>
+
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep("amount")}
+                className="flex-1 h-11 rounded-xl font-bold"
+              >
+                Back
+              </Button>
+              <Button
+                type="submit"
+                disabled={processLoading}
+                className="flex-1 h-11 rounded-xl font-bold"
+              >
+                {processLoading && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                Verify PIN
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {/* Step 3: OTP Verification */}
+        {step === "otp" && (
+          <form onSubmit={handleOtpSubmit} className="space-y-5">
+            <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
+              <p className="text-sm text-muted-foreground">
+                We&apos;ve sent a 6-digit code to your registered email
+              </p>
+            </div>
+
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="otp_code" className="font-bold text-xs">
+                  OTP Code
+                </FieldLabel>
+                <Input
+                  id="otp_code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  className="h-12 bg-muted/30 border-transparent focus-visible:border-primary focus-visible:ring-primary/20 rounded-xl tracking-widest text-center text-lg"
+                  {...otpForm.register("otp_code")}
+                />
+                {otpForm.formState.errors.otp_code && (
+                  <FieldError>
+                    {otpForm.formState.errors.otp_code.message}
+                  </FieldError>
+                )}
+              </Field>
+            </FieldGroup>
+
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep("pin")}
+                className="flex-1 h-11 rounded-xl font-bold"
+              >
+                Back
+              </Button>
+              <Button
+                type="submit"
+                disabled={verifyLoading}
+                className="flex-1 h-11 rounded-xl font-bold"
+              >
+                {verifyLoading && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                Complete Transfer
+              </Button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
