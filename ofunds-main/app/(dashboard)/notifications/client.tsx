@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bell, ArrowDownLeft, ArrowUpRight, Loader2, Trash2, Info } from "lucide-react";
+import { Bell, ArrowDownLeft, ArrowUpRight, Loader2, Trash2, Info, BellRing, BellOff, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
   useNotifications, 
   useDeleteNotification, 
   useMarkNotificationAsRead 
 } from "@/hooks/useNotifications";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { Button } from "@/components/ui/button";
 import type { Notification } from "@/services/notifications";
 
 interface SwipeableNotificationProps {
@@ -214,6 +216,71 @@ function SwipeableNotification({ notification, onDelete, onRead }: SwipeableNoti
   );
 }
 
+function PushNotificationSettings() {
+  const {
+    permission,
+    isSupported,
+    isSubscribed,
+    isLoading,
+    subscribe,
+    unsubscribe,
+  } = usePushNotifications();
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !isSupported) {
+    return null;
+  }
+
+  const handleToggle = async () => {
+    if (isSubscribed) {
+      await unsubscribe();
+    } else {
+      await subscribe();
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          "w-10 h-10 rounded-full flex items-center justify-center",
+          isSubscribed ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+        )}>
+          {isSubscribed ? <BellRing className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
+        </div>
+        <div>
+          <h3 className="font-semibold text-sm text-foreground">Push Notifications</h3>
+          <p className="text-xs text-muted-foreground">
+            {permission === "denied" 
+              ? "Blocked in browser settings" 
+              : isSubscribed 
+                ? "Enabled" 
+                : "Disabled"}
+          </p>
+        </div>
+      </div>
+      
+      <Button
+        size="sm"
+        variant={isSubscribed ? "outline" : "default"}
+        onClick={handleToggle}
+        disabled={isLoading || permission === "denied"}
+        className={cn(
+          "text-xs",
+          !isSubscribed && "bg-primary hover:bg-primary/90"
+        )}
+      >
+        {isLoading ? "..." : isSubscribed ? "Disable" : "Enable"}
+      </Button>
+    </div>
+  );
+}
+
 export default function NotificationsClient() {
   const { data: notifications, isLoading } = useNotifications();
   const { mutate: deleteNotification } = useDeleteNotification();
@@ -266,6 +333,9 @@ export default function NotificationsClient() {
           </p>
         )}
       </div>
+
+      {/* Push Notification Settings */}
+      <PushNotificationSettings />
 
       <div className="bg-card border border-border rounded-[32px] p-6 sm:p-10 shadow-sm space-y-6">
         {isLoading ? (

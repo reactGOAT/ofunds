@@ -29,6 +29,19 @@ export interface NotificationActionResponse {
   data: Notification | null;
 }
 
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
+export interface PushSubscriptionResponse {
+  status: boolean;
+  message: string;
+}
+
 export class NotificationService {
   /**
    * Get all notifications for the current user
@@ -71,6 +84,22 @@ export class NotificationService {
     data: Array<{ name: string; image: string }>;
   }> {
     const response = await axiosInstance.get("/alerts/flyer");
+    return response.data;
+  }
+
+  /**
+   * Save push notification subscription
+   */
+  static async savePushSubscription(payload: PushSubscriptionPayload): Promise<PushSubscriptionResponse> {
+    const response = await axiosInstance.post("/push/subscribe", payload);
+    return response.data;
+  }
+
+  /**
+   * Remove push notification subscription
+   */
+  static async removePushSubscription(endpoint: string): Promise<PushSubscriptionResponse> {
+    const response = await axiosInstance.post("/push/unsubscribe", { endpoint });
     return response.data;
   }
 }
